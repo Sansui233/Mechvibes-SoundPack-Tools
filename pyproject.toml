@@ -1,0 +1,25 @@
+[project]
+name = "mspt"
+version = "0.1.0"
+description = "MechvibesDX SoundPack generator and packer"
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = [
+    "pydantic>=2.12.5",
+    "pydub>=0.25.1",
+]
+
+[project.scripts]
+mspt = "mspt.cli:main"
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["mspt*", "rule"]
+exclude = ["sounds*", "target*", "schema*"]
+
+[tool.setuptools.package-data]
+rule = ["*.json"]
+
+[[tool.uv.index]]
+url = "https://mirrors.tuna.tsinghua.edu.cn/pypi/web/simple"
+default = true

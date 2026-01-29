@@ -1,0 +1,8 @@
+
+{
+  "map":{
+    "1.wav": ["Enter", "Tab"],
+    "2.wav": ["Numpad0", "Numpad*"]
+  },
+  "fallback": "***.wav"
+}
