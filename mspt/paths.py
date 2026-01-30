@@ -56,5 +56,7 @@ def resolve_pack_dir(input_path: Path) -> Path:
     if input_path.is_dir():
         if (input_path / "config.json").exists():
             return input_path
+        if any(input_path.glob("config.*.json")):
+            return input_path
         return resolve_target_dir(input_path)
     raise FileNotFoundError(f"pack source not found at {input_path}")

@@ -65,7 +65,20 @@ mspt build -i target/<soundpack> --split
 
 # 自动打包为 zip 到 target 目录下
 mspt -i <your sound directory> --release
+
+# DX 兼容：在生成 Mechvibes v1/v2 时，将 version 输出为字符串（"1" / "2"）
+mspt -i <your sound directory> --dx-compatible
 ```
+
+## 已知问题（Mechvibes-dx）
+
+本项目的 Schema 按 Mechvibes wiki 标准实现：
+https://github.com/hainguyents13/mechvibes/wiki/Config-Versions
+
+但在实际测试中发现，部分 Mechvibes-dx 版本对 `version` 字段的类型解析存在 bug，
+会出现“显示导入成功但实际没有导入”的情况。
+
+如果你的 v1 与 v2 需要导入 Mechvibes-dx，请添加 `--dx-compatible` 参数，让 v1/v2 输出 `"version": "1"` / `"version": "2"`。
 
 ## 默认生成规则
 

@@ -24,6 +24,9 @@ def concat_audio(files: Iterable[Path]) -> tuple[AudioSegment, list[SourceEntry]
         entries.append(
             SourceEntry(
                 name=file_path.stem,
+                # Virtual segment filename (what will be materialized at pack time).
+                # Preserve the original extension so user rules like `{0-3}.wav`
+                # continue to match.
                 file=file_path.name,
                 timing=[(float(start), float(end))],
             )
@@ -43,14 +46,15 @@ def generate_sourcemap(source_dir: Path, target_dir: Path) -> Path:
     ogg_path = target_dir / "sound.ogg"
     combined.export(ogg_path, format="ogg", codec="libvorbis", bitrate="192k")
 
+    # Docs format: a list of virtual sounds, each mapping to one or more
+    # concrete files with a time selection in sound.ogg.
     sourcemap = {
         "audio_file": ogg_path.name,
         "source_dir": str(source_dir),
-        "files": [
+        "sounds": [
             {
                 "name": entry.name,
-                "file": entry.file,
-                "timing": [[t[0], t[1]] for t in entry.timing],
+                "files": [{entry.file: [t[0], t[1]]} for t in entry.timing],
             }
             for entry in entries
         ],

@@ -65,7 +65,21 @@ mspt build -i target/<soundpack> --split
 
 # 自動で zip を作成
 mspt -i <your sound directory> --release
+
+# DX 互換：Mechvibes v1/v2 の version を文字列（"1" / "2"）で出力
+mspt -i <your sound directory> --dx-compatible
 ```
+
+## 既知の問題（Mechvibes-dx）
+
+本プロジェクトの Schema は Mechvibes wiki の仕様に準拠しています：
+https://github.com/hainguyents13/mechvibes/wiki/Config-Versions
+
+ただし実機テストでは、一部の Mechvibes-dx ビルドにおいて `version` フィールドの型解析に不具合があり、
+「インポート成功」と表示されても実際にはインポートされていない場合があります。
+
+Mechvibes v1/v2 パックを Mechvibes-dx に取り込む必要がある場合は、`--dx-compatible` を付けて
+v1/v2 の `version` を `"1"` / `"2"` として出力してください。
 
 ## デフォルトの割り当て
 

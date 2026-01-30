@@ -67,7 +67,20 @@ mspt build -i target/<soundpack> --split
 
 # Auto pack to zip under target
 mspt -i <your sound directory> --release
+
+# DX compatibility: emit Mechvibes v1/v2 `version` as strings ("1" / "2")
+mspt -i <your sound directory> --dx-compatible
 ```
+
+## Known issue (Mechvibes-dx)
+
+This project implements config schemas according to the Mechvibes wiki:
+https://github.com/hainguyents13/mechvibes/wiki/Config-Versions
+
+However, in real-world testing we found some Mechvibes-dx builds have a type-parsing bug for the `version` field.
+It may show “import succeeded” but the pack is not actually imported.
+
+If you need to import Mechvibes v1/v2 packs into Mechvibes-dx, use `--dx-compatible` so v1/v2 emit `"version": "1"` / `"version": "2"`.
 
 ## Default mapping
 

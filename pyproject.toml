@@ -7,6 +7,12 @@ requires-python = ">=3.10"
 dependencies = [
     "pydantic>=2.12.5",
     "pydub>=0.25.1",
+    "json5>=0.9.25",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.0.0",
 ]
 
 [project.scripts]

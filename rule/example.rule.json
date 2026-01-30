@@ -1,8 +1,9 @@
 
 {
   "map":{
-    "1.wav": ["Enter", "Tab"],
-    "2.wav": ["Numpad0", "Numpad*"]
-  },
-  "fallback": "***.wav"
+    "1.wav": ["Tab", "Space"],
+    "2.wav": ["Numpad0"],
+    "{0-3}.wav": ["Numpad*"], // support v2 random mode, randomly selects a key_up sound from the list.
+    //"fallback.wav": "*"
+  }
 }

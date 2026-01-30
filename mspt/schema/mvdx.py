@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from typing import Annotated, Literal, TypeAlias
 
 from pydantic import BaseModel, Field
@@ -118,9 +120,9 @@ class DefinitionKey(BaseModel):
     timing: TimingList
 
 
-class V2Schema(BaseModel):
+class MVDXSchema(BaseModel):
     audio_file: str
-    config_version: int
+    config_version: str
     created_at: str
     definition_method: str = "single"
     author: str | None = None

@@ -8,10 +8,36 @@ from importlib import resources
 from pathlib import Path
 from typing import cast
 
+from mspt.converters import build_mechvibes_v2_inputs, to_mechvibes_v1, to_mechvibes_v2
 from mspt.io_utils import deep_merge, read_json, write_json
 from mspt.paths import find_icon_file, find_license_file
 from mspt.rules import build_definitions, load_rule
-from mspt.schema.v2 import DefinitionKey, KeyName, V2Schema
+from mspt.schema.mechvibes_v2 import MechvibesV2Schema
+from mspt.schema.mvdx import DefinitionKey, KeyName, MVDXSchema
+
+
+def parse_schema_selector(selector: str) -> set[str]:
+    """Parse a schema selector string.
+
+    - "v1|v2" selects both
+    - "all" is a special value meaning "v1|v2|mvdx"
+    """
+
+    raw = (selector or "").strip().lower()
+    if not raw:
+        raise ValueError("schema selector is empty")
+    if raw == "all":
+        return {"v1", "v2", "mvdx"}
+    parts = [p.strip() for p in raw.split("|") if p.strip()]
+    allowed = {"v1", "v2", "mvdx"}
+    unknown = [p for p in parts if p not in allowed]
+    if unknown:
+        raise ValueError(
+            "Invalid --schema value(s): "
+            + ", ".join(sorted(set(unknown)))
+            + ". Use v1|v2|mvdx or all."
+        )
+    return set(parts)
 
 
 def to_id(raw_name: str) -> str:
@@ -69,12 +95,27 @@ def split_definitions(definitions: dict[str, dict], split: bool) -> dict[str, di
     return updated
 
 
+def to_definition_keys(definitions: dict[str, dict]) -> dict[KeyName, DefinitionKey]:
+    out: dict[KeyName, DefinitionKey] = {}
+    for key, value in definitions.items():
+        timing = value.get("timing", [])
+        pairs: list[tuple[float, float]] = []
+        for pair in timing:
+            if not isinstance(pair, (list, tuple)) or len(pair) != 2:
+                raise ValueError(f"Invalid timing pair for key '{key}': {pair}")
+            pairs.append((float(pair[0]), float(pair[1])))
+        out[cast(KeyName, key)] = DefinitionKey(timing=pairs)
+    return out
+
+
 def generate_config(
     sourcemap_path: Path,
     target_dir: Path,
     split: bool,
     rule_path: Path | None,
-) -> Path:
+    schema: str = "v1|v2",
+    dx_compatible: bool = False,
+) -> dict[str, Path]:
     sourcemap = read_json(sourcemap_path)
     source_dir = Path(sourcemap.get("source_dir", target_dir))
     rule = load_rule(rule_path)
@@ -87,13 +128,12 @@ def generate_config(
         icon_name = None
 
     definitions = build_definitions(sourcemap, rule=rule)
-    definitions = split_definitions(definitions, split)
-    definitions_typed = cast(dict[KeyName, DefinitionKey], definitions)
+    definitions_typed = to_definition_keys(definitions)
 
     raw_name = target_dir.name
-    model = V2Schema(
+    mvdx_model_base = MVDXSchema(
         audio_file=str(sourcemap.get("audio_file", "sound.ogg")),
-        config_version=2,
+        config_version="2",
         created_at=datetime.now(timezone.utc).isoformat(),
         id=to_id(raw_name),
         name=to_title(raw_name),
@@ -101,26 +141,78 @@ def generate_config(
         definitions=definitions_typed,
     )
 
-    config = model.model_dump(exclude_none=True)
-    common_path = Path("rule") / "common.json"
-    if common_path.exists():
-        config = deep_merge(config, read_json(common_path))
-    else:
-        try:
-            packaged_common = resources.files("rule") / "common.json"
-            if packaged_common.is_file():
-                packaged_data = json.loads(packaged_common.read_text(encoding="utf-8"))
-                config = deep_merge(config, packaged_data)
-        except ModuleNotFoundError:
-            pass
+    # MVDX optionally supports 2 timing pairs per key, which we currently use as
+    # a simple keydown/keyup split when requested.
+    mvdx_model = mvdx_model_base
+    if split:
+        split_defs = split_definitions(definitions, split=True)
+        mvdx_model = mvdx_model_base.model_copy(
+            update={"definitions": to_definition_keys(split_defs)}
+        )
 
-    config = reorder_config(config)
+    outputs: dict[str, Path] = {}
+    wanted = parse_schema_selector(schema)
 
-    config_path = target_dir / "config.json"
-    write_json(config_path, config)
+    if "mvdx" in wanted:
+        config = mvdx_model.model_dump(exclude_none=True)
+        common_path = Path("rule") / "common.json"
+        if common_path.exists():
+            config = deep_merge(config, read_json(common_path))
+        else:
+            try:
+                packaged_common = resources.files("rule") / "common.json"
+                if packaged_common.is_file():
+                    packaged_data = json.loads(
+                        packaged_common.read_text(encoding="utf-8")
+                    )
+                    config = deep_merge(config, packaged_data)
+            except ModuleNotFoundError:
+                pass
+
+        config = reorder_config(config)
+        mvdx_path = target_dir / "config.mvdx.json"
+        write_json(mvdx_path, config)
+        outputs["mvdx"] = mvdx_path
+
+    if "v1" in wanted:
+        # V1 is single-audio + timestamp-based.
+        v1_model = to_mechvibes_v1(mvdx=mvdx_model_base, dx_compatible=dx_compatible)
+        v1_path = target_dir / "config.v1.json"
+        write_json(v1_path, v1_model.model_dump(exclude_none=True))
+        outputs["v1"] = v1_path
+
+    if "v2" in wanted:
+        # For Mechvibes V2, definitions are file-based; allow _UP rules and
+        # treat --split as requesting key-up behavior (multi only in v2).
+        v2_inputs = build_mechvibes_v2_inputs(
+            sourcemap=sourcemap, rule=rule, split=split
+        )
+        v2_model: MechvibesV2Schema = to_mechvibes_v2(
+            id=mvdx_model_base.id,
+            name=mvdx_model_base.name,
+            author=mvdx_model_base.author,
+            icon=mvdx_model_base.icon,
+            tags=list(mvdx_model_base.tags),
+            sound=v2_inputs.sound,
+            soundup=v2_inputs.soundup,
+            keydown_defines=v2_inputs.keydown_defines,
+            keyup_defines=v2_inputs.keyup_defines,
+            all_keys=v2_inputs.keydown_defines.keys()
+            if v2_inputs.has_keyup_rules
+            else None,
+            fill_missing_up=v2_inputs.has_keyup_rules,
+            dx_compatible=dx_compatible,
+        )
+        v2_path = target_dir / "config.v2.json"
+        write_json(v2_path, v2_model.model_dump(exclude_none=True))
+        outputs["v2"] = v2_path
+
+    # Note: we intentionally do not copy source audio files into target.
+    # Packing should source audio from sourcemap/source_dir (and generate split
+    # outputs at pack-time when needed).
 
     license_file = find_license_file(source_dir)
     if license_file is not None:
         shutil.copy2(license_file, target_dir / license_file.name)
 
-    return config_path
+    return outputs
