@@ -63,13 +63,13 @@ def build_parser() -> argparse.ArgumentParser:
         "--dx-compatible",
         action="store_true",
         help=(
-            'Mechvibes-dx compatibility: emit Mechvibes v1/v2 `version` as a string ("1"/"2"). '
+            'Mechvibes compatibility: emit Mechvibes v1/v2 `version` as a string ("1"/"2"). '
         ),
     )
 
     parser = argparse.ArgumentParser(
         description=(
-            "MechvibesDX SoundPack Generator\n"
+            "Mechvibes SoundPack Generator\n"
             "\n"
             "One-shot:\n"
             "  mspt -i <INPUT_DIR> --release\n"

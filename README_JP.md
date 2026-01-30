@@ -1,7 +1,7 @@
-MechvibesDX SoundPack tools
+Mechvibes SoundPack tools
 ===========================
 
-このツールは MechvibesDX SoundPack を自動生成します。最も簡単な使い方は次の通りです。
+このツールは Mechvibes SoundPack を自動生成します。最も簡単な使い方は次の通りです。
 `mspt -i <your sound directory>` を実行すると、target 配下に soundpack が生成されます。
 
 ## 1. 必要環境
@@ -70,15 +70,15 @@ mspt -i <your sound directory> --release
 mspt -i <your sound directory> --dx-compatible
 ```
 
-## 既知の問題（Mechvibes-dx）
+## 既知の問題
 
 本プロジェクトの Schema は Mechvibes wiki の仕様に準拠しています：
 https://github.com/hainguyents13/mechvibes/wiki/Config-Versions
 
-ただし実機テストでは、一部の Mechvibes-dx ビルドにおいて `version` フィールドの型解析に不具合があり、
+ただし実機テストでは、一部の MechvibesDX ビルドにおいて `version` フィールドの型解析に不具合があり、
 「インポート成功」と表示されても実際にはインポートされていない場合があります。
 
-Mechvibes v1/v2 パックを Mechvibes-dx に取り込む必要がある場合は、`--dx-compatible` を付けて
+Mechvibes v1/v2 パックを Mechvibes に取り込む必要がある場合は、`--dx-compatible` を付けて
 v1/v2 の `version` を `"1"` / `"2"` として出力してください。
 
 ## デフォルトの割り当て
