@@ -75,10 +75,10 @@ mspt -i <your sound directory> --dx-compatible
 本プロジェクトの Schema は Mechvibes wiki の仕様に準拠しています：
 https://github.com/hainguyents13/mechvibes/wiki/Config-Versions
 
-ただし実機テストでは、一部の MechvibesDX ビルドにおいて `version` フィールドの型解析に不具合があり、
+ただし実機テストでは、一部の Mechvibes-dx ビルドにおいて `version` フィールドの型解析に不具合があり、
 「インポート成功」と表示されても実際にはインポートされていない場合があります。
 
-Mechvibes v1/v2 パックを Mechvibes に取り込む必要がある場合は、`--dx-compatible` を付けて
+Mechvibes v1/v2 パックを Mechvibes-dx に取り込む必要がある場合は、`--dx-compatible` を付けて
 v1/v2 の `version` を `"1"` / `"2"` として出力してください。
 
 ## デフォルトの割り当て
@@ -90,11 +90,22 @@ v1/v2 の `version` を `"1"` / `"2"` として出力してください。
 
 ## Rule ファイル形式
 
-rule ファイルは map オブジェクトのみを持ちます。詳細は [rule/example.rule.json](rule/example.rule.json)。
+rule ファイルは単一の map オブジェクトです：`filePattern -> key selectors`。
+詳細は [rule/example.rule.json](rule/example.rule.json)。
 
-- map: audio file -> keynames のマッピング（正規表現または glob 対応）
-- keynames に "*" を含む場合、その音源は fallback になります。未割り当てのキーは
-  その音源を使用し、そうでない場合はデフォルトのランダム割り当てになります。
+ポイント：
+- 順序が重要（先勝ち）: 前のルールが先にファイルを消費し、後のルールは消費済みファイルを再利用できません。
+- `filePattern` は以下に対応:
+  - 数値の波括弧レンジ `{0-3}`（glob に展開）
+  - 正規表現（優先。大小文字無視、`re.search`）
+  - 正規表現のコンパイル失敗時は glob にフォールバック
+- key selector はキー名の完全一致、または正規表現/glob が使えます。
+- fallback:
+  - selector リストに `"*"` を含めると keydown fallback（未割り当てキーがそれを使用）
+  - selector リストに `"*_UP"` を含めると keyup fallback（Mechvibes v2 のみ）
+- key selector の末尾に `_UP` を付けると key-up 定義に割り当てます（Mechvibes v2 のみ）。例: `"Enter_UP"` / `"Numpad*_UP"`。
+
+rule ローダーは JSON5（コメントや trailing comma）に対応しているため、`//` コメントが使えます。
 
 例：
 
@@ -102,13 +113,25 @@ rule ファイルは map オブジェクトのみを持ちます。詳細は [ru
 {
   "map": {
     "1.wav": ["Enter", "Tab"],
-    "2.wav": ["Numpad0", "Numpad*"],
+    "{0-3}.wav": ["Numpad*"],
     "fallback.wav": ["*"]
   }
 }
 ```
 
-キー名とファイル名の両方で正規表現または glob が使えます。
+V2 key-up 例（`_UP`）：
+
+```json
+{
+  "map": {
+    "down.wav": ["Enter", "*"],
+    "up.wav": ["Enter_UP"],
+    "up-fallback.wav": ["*_UP"]
+  }
+}
+```
+
+ヒント: より具体的なパターンを先に、広いパターン（`"*"` fallback など）は最後に置いてください。
 
 ## パッケージ
 

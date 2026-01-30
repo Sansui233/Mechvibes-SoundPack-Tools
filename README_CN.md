@@ -75,10 +75,10 @@ mspt -i <your sound directory> --dx-compatible
 本项目的 Schema 按 Mechvibes wiki 标准实现：
 https://github.com/hainguyents13/mechvibes/wiki/Config-Versions
 
-但在实际测试中发现，部分 MechvibesDX 版本对 `version` 字段的类型解析存在 bug，
+但在实际测试中发现，部分 Mechvibes-dx 版本对 `version` 字段的类型解析存在 bug，
 会出现“显示导入成功但实际没有导入”的情况。
 
-如果你的 v1 与 v2 需要导入 Mechvibes，请添加 `--dx-compatible` 参数，让 v1/v2 输出 `"version": "1"` / `"version": "2"`。
+如果你的 v1 与 v2 需要导入 Mechvibes-dx，请添加 `--dx-compatible` 参数，让 v1/v2 输出 `"version": "1"` / `"version": "2"`。
 
 ## 默认生成规则
 
@@ -88,10 +88,21 @@ https://github.com/hainguyents13/mechvibes/wiki/Config-Versions
 
 ## Rule 文件格式
 
-rule 文件目录只包含一个 map 对象。见 [rule/example.rule.json](rule/example.rule.json)。
+rule 文件只包含一个 map 对象：`filePattern -> key selectors`。见 [rule/example.rule.json](rule/example.rule.json)。
 
-- map：audio file -> keynames 映射列表（支持正则或通配）
-- 当 keynames 中包含 "*" 时，该音频作为 fallback：所有未分配的 key 都使用该音频；否则使用默认的随机分配策略。
+说明：
+- 顺序很重要（先匹配优先）：越靠前的规则越优先消耗文件；后面的规则不能重复使用已被消耗的文件。
+- `filePattern` 支持：
+  - 数字花括号范围 `{0-3}`（会展开为 glob 模式）
+  - 正则（优先；大小写不敏感，`re.search`）
+  - 正则编译失败时回退为 glob
+- key selector 支持：精确按键名或正则/glob。
+- fallback：
+  - selector 列表中包含 `"*"`：该音频作为 keydown fallback（未分配按键会使用它）
+  - selector 列表中包含 `"*_UP"`：该音频作为 keyup fallback（仅 Mechvibes v2）
+- 在 key selector 上追加 `_UP` 后缀可以指定 key-up（仅 Mechvibes v2），例如 `"Enter_UP"` / `"Numpad*_UP"`。
+
+rule 加载器支持 JSON5（允许注释与 trailing comma），所以示例 rule 里可以写 `//` 注释。
 
 示例：
 
@@ -99,13 +110,25 @@ rule 文件目录只包含一个 map 对象。见 [rule/example.rule.json](rule/
 {
   "map": {
     "1.wav": ["Enter", "Tab"],
-    "2.wav": ["Numpad0", "Numpad*"],
+    "{0-3}.wav": ["Numpad*"],
     "fallback.wav": ["*"]
   }
 }
 ```
 
-按键名与文件名都支持正则或通配匹配。
+V2 key-up 示例（`_UP`）：
+
+```json
+{
+  "map": {
+    "down.wav": ["Enter", "*"],
+    "up.wav": ["Enter_UP"],
+    "up-fallback.wav": ["*_UP"]
+  }
+}
+```
+
+建议：把更具体的规则放前面，把更宽泛的规则（如 `"*"` fallback）放最后。
 
 ## 打包
 

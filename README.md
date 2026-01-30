@@ -77,10 +77,10 @@ mspt -i <your sound directory> --dx-compatible
 This project implements config schemas according to the Mechvibes wiki:
 https://github.com/hainguyents13/mechvibes/wiki/Config-Versions
 
-However, in real-world testing we found some MechvibesDX builds have a type-parsing bug for the `version` field.
+However, in real-world testing we found some Mechvibes-dx builds have a type-parsing bug for the `version` field.
 It may show “import succeeded” but the pack is not actually imported.
 
-If you need to import Mechvibes v1/v2 packs into Mechvibes, use `--dx-compatible` so v1/v2 emit `"version": "1"` / `"version": "2"`.
+If you need to import Mechvibes v1/v2 packs into Mechvibes-dx, use `--dx-compatible` so v1/v2 emit `"version": "1"` / `"version": "2"`.
 
 ## Default mapping
 
@@ -91,11 +91,21 @@ Other files are assigned to remaining keys with a balanced random strategy.
 
 ## Rule format
 
-The rule file contains only a map object. See [rule/example.rule.json](rule/example.rule.json).
+The rule file is a single map object: `filePattern -> key selectors`.
 
-- map: audio file -> keynames mapping list (regex or glob supported)
-- When the key list contains "*", that audio becomes the fallback: all unassigned keys
-	use this audio; otherwise the default random strategy is used.
+Notes:
+- Order matters (first match wins): earlier rules consume files first; later rules cannot reuse already-consumed files.
+- `filePattern` supports:
+	- numeric brace ranges like `{0-3}` (expanded as glob patterns)
+	- regex (preferred; `re.search`, case-insensitive)
+	- glob fallback when regex compilation fails
+- Key selectors support exact key names or regex/glob selectors.
+- Fallback:
+	- include `"*"` in the selector list to mark this file as the keydown fallback
+	- include `"*_UP"` to mark this file as the keyup fallback (Mechvibes v2 only)
+- `_UP` suffix on a key selector targets key-up definitions (Mechvibes v2 only), e.g. `"Enter_UP"` / `"Numpad*_UP"`.
+
+The rule loader accepts JSON5 (comments and trailing commas), so the example rule may contain `//` comments.
 
 Example:
 
@@ -103,13 +113,25 @@ Example:
 {
 	"map": {
 		"1.wav": ["Enter", "Tab"],
-		"2.wav": ["Numpad0", "Numpad*"],
+		"{0-3}.wav": ["Numpad*"],
 		"fallback.wav": ["*"]
 	}
 }
 ```
 
-Both key names and filenames support regex or glob matching.
+V2 key-up example (`_UP`):
+
+```json
+{
+	"map": {
+		"down.wav": ["Enter", "*"],
+		"up.wav": ["Enter_UP"],
+		"up-fallback.wav": ["*_UP"]
+	}
+}
+```
+
+Tip: put more specific patterns first; keep broad patterns (like `"*"` fallbacks) last.
 
 ## Packaging
 
